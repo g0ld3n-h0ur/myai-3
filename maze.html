@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maze of Us</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #171a21;
+      --line: #c9ced91f;
+      --wall: #d9deea9d;
+      --player: #66d9ff;
+      --goal: #ffd166;
+      --text: #ecf0f7;
+      --muted: #a4abb8;
+      --solution: #b087ff;
+      --heart: #ff5f7a;
+      --btn: #232a36;
+      --btn-active: #2f3748;
+      --sky-1: #0b1224;
+      --sky-2: #131d3c;
+      --sky-3: #22133a;
+      --glow-1: #3c4e8f44;
+      --glow-2: #8f4eb344;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background:
+        radial-gradient(1200px 600px at 80% -180px, var(--glow-2) 0%, transparent 65%),
+        radial-gradient(1100px 580px at 15% -120px, var(--glow-1) 0%, transparent 62%),
+        linear-gradient(180deg, var(--sky-2) 0%, var(--sky-1) 45%, var(--bg) 100%);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.5;
+      background-image:
+        radial-gradient(circle at 12% 18%, #ffffffb8 0 1px, transparent 1.5px),
+        radial-gradient(circle at 32% 25%, #d8e3ff8a 0 1px, transparent 1.5px),
+        radial-gradient(circle at 73% 15%, #ffffff8f 0 1px, transparent 1.5px),
+        radial-gradient(circle at 85% 32%, #e2e7ff75 0 1px, transparent 1.5px),
+        radial-gradient(circle at 57% 8%, #ffffff7d 0 1px, transparent 1.5px),
+        radial-gradient(circle at 45% 20%, #ffffff61 0 1px, transparent 1.5px);
+    }
+
+    .app {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto auto;
+      gap: 0.75rem;
+      padding: 0.85rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      background: color-mix(in srgb, var(--panel), transparent 10%);
+      border: 1px solid #ffffff12;
+      border-radius: 0.85rem;
+      padding: 0.7rem 0.9rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .meta {
+      font-size: 0.83rem;
+      color: var(--muted);
+      display: flex;
+      gap: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .keys {
+      color: #ffe08a;
+      font-weight: 600;
+    }
+
+    .maze-shell {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 1rem;
+      border: 1px solid #ffffff1f;
+      background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)),
+      url("bg1.jpg");
+      background-size: cover;
+      background-position: center;
+
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px #ffffff08, 0 14px 35px #0000005a;
+      transition: opacity 700ms ease, filter 700ms ease, transform 700ms ease;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .controls {
+      display: grid;
+      gap: 0.6rem;
+      justify-items: center;
+      margin-top: 0.25rem;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dpad {
+      width: min(260px, 88vw);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.55rem;
+    }
+
+    .dpad button,
+    .actions button {
+      appearance: none;
+      border: 1px solid #ffffff26;
+      border-radius: 0.8rem;
+      background: var(--btn);
+      color: var(--text);
+      font-size: 0.98rem;
+      line-height: 1;
+      padding: 0.72rem;
+      min-height: 3rem;
+      font-weight: 600;
+      transition: transform 130ms ease, background 130ms ease, border-color 130ms ease;
+    }
+
+    .dpad button:active,
+    .actions button:active {
+      transform: scale(0.97);
+      background: var(--btn-active);
+      border-color: #ffffff45;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.6rem;
+      width: 100%;
+    }
+
+    .actions button:first-child {
+      background: linear-gradient(180deg, #3a2a53 0%, #2b2140 100%);
+      border-color: #b087ff66;
+    }
+
+    #musicBtn {
+      background: linear-gradient(180deg, #233f5a 0%, #1a2f45 100%);
+      border-color: #66d9ff66;
+    }
+
+    .win-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      transition: opacity 620ms ease;
+      background: radial-gradient(circle at center, #0f1115ea, #0f1115f8);
+    }
+
+    .win-overlay.show {
+      opacity: 1;
+    }
+
+    .scene {
+      position: relative;
+      width: min(360px, 88vw);
+      height: 220px;
+      display: grid;
+      place-items: center;
+    }
+
+    .figure {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      position: absolute;
+      top: 84px;
+      display: grid;
+      place-items: center;
+      color: #101318;
+      font-size: 1.2rem;
+      font-weight: 700;
+      box-shadow: 0 8px 25px #00000073;
+      transition: transform 1.3s ease;
+    }
+
+    .a { left: 18%; background: #7bdff6; }
+    .b { right: 18%; background: #ffd166; }
+
+    .win-overlay.show .a { transform: translateX(72px); }
+    .win-overlay.show .b { transform: translateX(-72px); }
+
+    .hug {
+      position: absolute;
+      top: 103px;
+      font-size: 2rem;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 320ms ease 1.15s, transform 320ms ease 1.15s;
+      color: #ffffff;
+      text-shadow: 0 5px 22px #000;
+    }
+
+    .win-overlay.show .hug {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .hearts {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .heart {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--heart);
+      opacity: 0;
+      animation: float 1600ms ease forwards;
+      filter: drop-shadow(0 0 8px #ff5f7a66);
+    }
+
+    @keyframes float {
+      0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+      15% { opacity: 1; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--x)), -120px) scale(var(--s)); }
+    }
+
+    .msg {
+      position: absolute;
+      bottom: 6px;
+      width: 100%;
+      text-align: center;
+      font-size: 1rem;
+      color: #f1f4fb;
+      letter-spacing: 0.4px;
+      opacity: 0;
+      transition: opacity 520ms ease 1.35s;
+    }
+
+    .win-overlay.show .msg { opacity: 1; }
+
+    .gift-wrap {
+      position: absolute;
+      top: 132px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      opacity: 0;
+      transition: opacity 450ms ease 1.2s, transform 450ms ease 1.2s;
+      font-size: 2.3rem;
+      filter: drop-shadow(0 8px 20px #00000099);
+    }
+
+    .win-overlay.final .gift-wrap {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      animation: popGift 850ms ease 1.2s;
+    }
+
+    @keyframes popGift {
+      0% { transform: translateX(-50%) scale(0.8); }
+      40% { transform: translateX(-50%) scale(1.1); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    @media (min-width: 700px) {
+      .app { padding: 1.1rem 1.25rem; }
+      .title { font-size: 1.02rem; }
+      .meta { font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="title">Maze of Us</div>
+      <div class="meta">
+        <span id="sizeLabel">24×24</span>
+        <span id="timer">00:00</span>
+        <span class="keys" id="keyCount">🔑 0/3</span>
+      </div>
+    </header>
+
+    <section class="maze-shell" id="mazeShell" aria-label="Maze area">
+      <canvas id="mazeCanvas"></canvas>
+    </section>
+
+    <section class="controls" aria-label="Game controls">
+      <div class="dpad">
+        <span></span>
+        <button data-dir="up" aria-label="Move up">▲</button>
+        <span></span>
+        <button data-dir="left" aria-label="Move left">◀</button>
+        <span></span>
+        <button data-dir="right" aria-label="Move right">▶</button>
+        <span></span>
+        <button data-dir="down" aria-label="Move down">▼</button>
+        <span></span>
+      </div>
+      <div class="actions">
+        <button id="solutionBtn">Show Solution</button>
+        <button id="resetBtn">Reset Maze</button>
+        <button id="musicBtn">Music: On</button>
+      </div>
+    </section>
+  </main>
+
+  <section class="win-overlay" id="winOverlay" aria-hidden="true">
+    <div class="scene">
+      <div class="figure a">◉</div>
+      <div class="figure b">◉</div>
+      <div class="hug">🤍</div>
+      <div class="hearts" id="hearts"></div>
+      <div class="gift-wrap" id="giftWrap">🎁</div>
+      <div class="msg">you found your way to me</div>
+    </div>
+  </section>
+  <audio id="bgMusic" src="music1.mp3" loop preload="auto"></audio>
+
+  <script>
+    (() => {
+      const GRID = 24; // at least 20x20
+      const canvas = document.getElementById('mazeCanvas');
+      const ctx = canvas.getContext('2d');
+      const mazeShell = document.getElementById('mazeShell');
+      const timerEl = document.getElementById('timer');
+      const sizeLabel = document.getElementById('sizeLabel');
+      const solutionBtn = document.getElementById('solutionBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const winOverlay = document.getElementById('winOverlay');
+      const hearts = document.getElementById('hearts');
+      const keyCount = document.getElementById('keyCount');
+      const giftWrap = document.getElementById('giftWrap');
+      const winMessage = document.querySelector('.msg');
+      const bgMusic = document.getElementById('bgMusic');
+      const musicBtn = document.getElementById('musicBtn');
+
+      sizeLabel.textContent = `${GRID}×${GRID}`;
+      const TARGET_KEYS = 3;
+
+      const maze = Array.from({ length: GRID }, () =>
+        Array.from({ length: GRID }, () => ({
+          visited: false,
+          walls: { top: true, right: true, bottom: true, left: true }
+        }))
+      );
+
+      const player = { x: 0, y: 0 };
+      const goal = { x: GRID - 1, y: GRID - 1 };
+
+      let cellSize = 0;
+      let padding = 10;
+      let solvedPath = [];
+      let showSolution = false;
+      let won = false;
+      let timer = 0;
+      let timerId;
+      let musicEnabled = true;
+      let audioUnlocked = false;
+      let keysCollected = Number(localStorage.getItem('mazeKeys') || 0);
+      keysCollected = Number.isFinite(keysCollected) ? Math.max(0, Math.min(keysCollected, TARGET_KEYS)) : 0;
+
+      function updateKeys() {
+        keyCount.textContent = `🔑 ${keysCollected}/${TARGET_KEYS}`;
+        localStorage.setItem('mazeKeys', String(keysCollected));
+      }
+
+      function updateMusicLabel() {
+        musicBtn.textContent = `Music: ${musicEnabled ? 'On' : 'Off'}`;
+      }
+
+      async function tryStartMusic() {
+        if (!musicEnabled || audioUnlocked) return;
+        bgMusic.volume = 0.35;
+        try {
+          await bgMusic.play();
+          audioUnlocked = true;
+        } catch (_) {
+          // Autoplay may be blocked until a gesture; we retry on next interaction.
+        }
+      }
+
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const bounds = mazeShell.getBoundingClientRect();
+        const side = Math.floor(Math.min(bounds.width, bounds.height));
+        canvas.width = side * dpr;
+        canvas.height = side * dpr;
+        canvas.style.width = `${side}px`;
+        canvas.style.height = `${side}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        padding = Math.max(8, Math.floor(side * 0.02));
+        cellSize = (side - padding * 2) / GRID;
+        draw();
+      }
+
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = (Math.random() * (i + 1)) | 0;
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function generateMaze() {
+        const stack = [];
+        maze[0][0].visited = true;
+        stack.push([0, 0]);
+
+        while (stack.length) {
+          const [cx, cy] = stack[stack.length - 1];
+          const dirs = shuffle([
+            [0, -1, 'top', 'bottom'],
+            [1, 0, 'right', 'left'],
+            [0, 1, 'bottom', 'top'],
+            [-1, 0, 'left', 'right']
+          ]);
+
+          let carved = false;
+          for (const [dx, dy, wall, opposite] of dirs) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) continue;
+            if (maze[ny][nx].visited) continue;
+
+            maze[cy][cx].walls[wall] = false;
+            maze[ny][nx].walls[opposite] = false;
+            maze[ny][nx].visited = true;
+            stack.push([nx, ny]);
+            carved = true;
+            break;
+          }
+
+          if (!carved) stack.pop();
+        }
+
+        // Add a few loops for moderate difficulty (less tree-like obviousness)
+        const extraOpenings = Math.floor(GRID * GRID * 0.07);
+        for (let i = 0; i < extraOpenings; i++) {
+          const x = 1 + ((Math.random() * (GRID - 2)) | 0);
+          const y = 1 + ((Math.random() * (GRID - 2)) | 0);
+          const options = shuffle([
+            [0, -1, 'top', 'bottom'],
+            [1, 0, 'right', 'left'],
+            [0, 1, 'bottom', 'top'],
+            [-1, 0, 'left', 'right']
+          ]);
+          for (const [dx, dy, wall, opposite] of options) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) continue;
+            if (!maze[y][x].walls[wall]) continue;
+            maze[y][x].walls[wall] = false;
+            maze[ny][nx].walls[opposite] = false;
+            break;
+          }
+        }
+      }
+
+      function findPath() {
+        const q = [[0, 0]];
+        const key = (x, y) => `${x},${y}`;
+        const cameFrom = new Map();
+        const visited = new Set([key(0, 0)]);
+
+        while (q.length) {
+          const [x, y] = q.shift();
+          if (x === goal.x && y === goal.y) break;
+
+          const cell = maze[y][x];
+          const moves = [
+            [0, -1, 'top'],
+            [1, 0, 'right'],
+            [0, 1, 'bottom'],
+            [-1, 0, 'left']
+          ];
+
+          for (const [dx, dy, side] of moves) {
+            if (cell.walls[side]) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+            const k = key(nx, ny);
+            if (visited.has(k)) continue;
+            visited.add(k);
+            cameFrom.set(k, [x, y]);
+            q.push([nx, ny]);
+          }
+        }
+
+        const path = [];
+        let cursor = [goal.x, goal.y];
+        while (cursor) {
+          path.push(cursor);
+          const prev = cameFrom.get(key(cursor[0], cursor[1]));
+          cursor = prev || null;
+        }
+        return path.reverse();
+      }
+
+      function draw() {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        ctx.clearRect(0, 0, w, h);
+
+        // Maze lines
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--wall').trim();
+        ctx.lineWidth = Math.max(1.2, cellSize * 0.09);
+        ctx.lineCap = 'round';
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            const cell = maze[y][x];
+            const px = padding + x * cellSize;
+            const py = padding + y * cellSize;
+            if (cell.walls.top) {
+              ctx.beginPath();
+              ctx.moveTo(px, py);
+              ctx.lineTo(px + cellSize, py);
+              ctx.stroke();
+            }
+            if (cell.walls.right) {
+              ctx.beginPath();
+              ctx.moveTo(px + cellSize, py);
+              ctx.lineTo(px + cellSize, py + cellSize);
+              ctx.stroke();
+            }
+            if (cell.walls.bottom) {
+              ctx.beginPath();
+              ctx.moveTo(px, py + cellSize);
+              ctx.lineTo(px + cellSize, py + cellSize);
+              ctx.stroke();
+            }
+            if (cell.walls.left) {
+              ctx.beginPath();
+              ctx.moveTo(px, py);
+              ctx.lineTo(px, py + cellSize);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Goal marker
+        const goalX = padding + goal.x * cellSize + cellSize * 0.5;
+        const goalY = padding + goal.y * cellSize + cellSize * 0.5;
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--goal').trim();
+        ctx.beginPath();
+        ctx.arc(goalX, goalY, cellSize * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Solution path
+        if (showSolution && solvedPath.length) {
+          ctx.save();
+          ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--solution').trim();
+          ctx.lineWidth = Math.max(2, cellSize * 0.22);
+          ctx.shadowColor = 'rgba(176, 135, 255, 0.75)';
+          ctx.shadowBlur = 8;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          solvedPath.forEach(([x, y], i) => {
+            const cx = padding + x * cellSize + cellSize / 2;
+            const cy = padding + y * cellSize + cellSize / 2;
+            if (i === 0) ctx.moveTo(cx, cy);
+            else ctx.lineTo(cx, cy);
+          });
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Player
+        const playerX = padding + player.x * cellSize + cellSize * 0.5;
+        const playerY = padding + player.y * cellSize + cellSize * 0.5;
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--player').trim();
+        ctx.beginPath();
+        ctx.arc(playerX, playerY, cellSize * 0.24, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function canMove(dir) {
+        const cell = maze[player.y][player.x];
+        if (dir === 'up' && !cell.walls.top) return [0, -1];
+        if (dir === 'right' && !cell.walls.right) return [1, 0];
+        if (dir === 'down' && !cell.walls.bottom) return [0, 1];
+        if (dir === 'left' && !cell.walls.left) return [-1, 0];
+        return null;
+      }
+
+      function move(dir) {
+        if (won) return;
+        const delta = canMove(dir);
+        if (!delta) return;
+        player.x += delta[0];
+        player.y += delta[1];
+        draw();
+
+        if (player.x === goal.x && player.y === goal.y) {
+          onWin();
+        }
+      }
+
+      function formatTime(sec) {
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      function startTimer() {
+        clearInterval(timerId);
+        timer = 0;
+        timerEl.textContent = '00:00';
+        timerId = setInterval(() => {
+          if (won) return;
+          timer += 1;
+          timerEl.textContent = formatTime(timer);
+        }, 1000);
+      }
+
+      function spawnHearts() {
+        hearts.innerHTML = '';
+        for (let i = 0; i < 14; i++) {
+          const h = document.createElement('span');
+          h.className = 'heart';
+          h.textContent = '❤';
+          h.style.setProperty('--x', `${(Math.random() * 140 - 70).toFixed(0)}px`);
+          h.style.setProperty('--s', (0.75 + Math.random() * 0.9).toFixed(2));
+          h.style.animationDelay = `${(i * 85)}ms`;
+          hearts.appendChild(h);
+        }
+      }
+
+      function onWin() {
+        won = true;
+        if (keysCollected < TARGET_KEYS) keysCollected += 1;
+        updateKeys();
+        mazeShell.style.opacity = '0.08';
+        mazeShell.style.filter = 'blur(2px)';
+        mazeShell.style.transform = 'scale(0.985)';
+
+        const finalPrize = keysCollected >= TARGET_KEYS;
+        winOverlay.classList.toggle('final', finalPrize);
+        winOverlay.classList.add('show');
+        spawnHearts();
+        winMessage.textContent = finalPrize
+          ? 'all keys collected — the gift box opens for you'
+          : `you found your way to me · key collected (${keysCollected}/${TARGET_KEYS})`;
+        giftWrap.textContent = finalPrize ? '🎁✨' : '🔒🎁';
+
+        if (navigator.vibrate) navigator.vibrate([50, 40, 80]);
+        setTimeout(() => {
+        window.parent.goToScreen("maze", "word");
+        }, 2000);
+      }
+
+      function resetGame(regenerate = false) {
+        if (regenerate) {
+          for (let y = 0; y < GRID; y++) {
+            for (let x = 0; x < GRID; x++) {
+              maze[y][x].visited = false;
+              maze[y][x].walls = { top: true, right: true, bottom: true, left: true };
+            }
+          }
+          generateMaze();
+          solvedPath = findPath();
+        }
+
+        player.x = 0;
+        player.y = 0;
+        won = false;
+        showSolution = false;
+        solutionBtn.textContent = 'Show Solution';
+
+        winOverlay.classList.remove('final');
+        winOverlay.classList.remove('show');
+        hearts.innerHTML = '';
+        mazeShell.style.opacity = '1';
+        mazeShell.style.filter = 'none';
+        mazeShell.style.transform = 'none';
+
+        draw();
+        startTimer();
+      }
+
+      // Keyboard support
+      document.addEventListener('keydown', (e) => {
+        tryStartMusic();
+        const map = {
+          ArrowUp: 'up',
+          ArrowRight: 'right',
+          ArrowDown: 'down',
+          ArrowLeft: 'left'
+        };
+        const dir = map[e.key];
+        if (!dir) return;
+        e.preventDefault();
+        move(dir);
+      }, { passive: false });
+
+      // Touch buttons support
+      document.querySelectorAll('[data-dir]').forEach(btn => {
+        const dir = btn.dataset.dir;
+        const handler = (e) => {
+          e.preventDefault();
+          tryStartMusic();
+          move(dir);
+        };
+        btn.addEventListener('click', handler);
+        btn.addEventListener('touchstart', handler, { passive: false });
+      });
+
+      // Optional swipe gestures directly on canvas
+      let sx = 0, sy = 0;
+      canvas.addEventListener('touchstart', (e) => {
+        tryStartMusic();
+        const t = e.changedTouches[0];
+        sx = t.clientX;
+        sy = t.clientY;
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+        if (Math.hypot(dx, dy) < 20) return;
+        if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+        else move(dy > 0 ? 'down' : 'up');
+      }, { passive: true });
+
+      solutionBtn.addEventListener('click', () => {
+        tryStartMusic();
+        showSolution = !showSolution;
+        solutionBtn.textContent = showSolution ? 'Hide Solution' : 'Show Solution';
+        draw();
+      });
+
+      resetBtn.addEventListener('click', () => resetGame(true));
+      musicBtn.addEventListener('click', async () => {
+        musicEnabled = !musicEnabled;
+        if (!musicEnabled) {
+          bgMusic.pause();
+        } else {
+          await tryStartMusic();
+        }
+        updateMusicLabel();
+      });
+      window.addEventListener('resize', resizeCanvas);
+
+      generateMaze();
+      solvedPath = findPath();
+      updateKeys();
+      updateMusicLabel();
+      resizeCanvas();
+      resetGame(false);
+      document.body.addEventListener('click', tryStartMusic, { once: true });
+      document.body.addEventListener('touchstart', tryStartMusic, { once: true });
+    })();
+  </script>
+</body>
+</html>

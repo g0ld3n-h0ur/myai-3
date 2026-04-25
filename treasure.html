@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cinematic Birthday</title>
+
+<style>
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  font-family:sans-serif;
+  color:white;
+  overflow:hidden;
+  transition:background 1s ease;
+}
+
+/* BACKGROUNDS */
+.bg-choco{
+  background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.7)),url("bg2.jpg");
+}
+.bg-flower{
+  background:linear-gradient(rgba(0,0,20,0.8),rgba(0,0,40,0.9)),url("bg3.jpg");
+}
+.bg-cake{
+  background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.95)),url("bg3.jpg");
+}
+
+/* PANELS */
+.panel{display:none;text-align:center;}
+.panel.active{display:block;}
+
+/* BOX */
+.gift-box{
+  width:200px;height:150px;position:relative;cursor:pointer;
+}
+.base{position:absolute;bottom:0;width:100%;height:70%;background:#8c0e46;border-radius:10px;}
+.lid{
+  position:absolute;width:100%;height:40%;top:0;
+  background:#b11d61;border-radius:10px;
+  transform-origin:left bottom;
+  transition:0.6s;
+}
+.gift-box.open .lid{transform:rotate(-80deg);}
+
+/* CHOCOLATE */
+@keyframes fall{
+  0%{transform:translateY(-50px) rotate(0);}
+  100%{transform:translateY(110vh) rotate(360deg);}
+}
+
+/* STARS */
+.star{
+  position:absolute;
+  width:2px;height:2px;
+  background:white;
+  opacity:0.6;
+  animation:twinkle 2s infinite alternate;
+}
+@keyframes twinkle{
+  from{opacity:0.3;}
+  to{opacity:1;}
+}
+
+/* FLOWERS */
+.garden{
+  display:flex;
+  justify-content:space-around;
+  align-items:flex-end;
+  height:220px;
+}
+
+.plant{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.stem{
+  width:6px;height:0;background:#3cff8a;
+  transition:height 2s ease;
+}
+
+.bud{
+  width:14px;height:14px;background:#7a5cff;
+  border-radius:50%;
+  transform:scale(0);
+  transition:transform 1s ease 1.5s;
+}
+
+.flower{
+  width:40px;height:40px;border-radius:50%;
+  transform:scale(0);
+  transition:transform 1s ease 2.5s;
+}
+
+.rose{background:#ff4d6d;}
+.sunflower{background:#ffd60a;}
+.lily{background:white;}
+
+.grow .stem{height:130px;}
+.grow .bud{transform:scale(1);}
+.grow .flower{transform:scale(1);}
+
+/* CAKE */
+.cake{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  position:relative;
+  filter:drop-shadow(0 0 20px pink);
+}
+
+.tier{
+  background:#ffc2d1;
+  border-radius:10px;
+}
+.bottom{width:180px;height:60px;}
+.mid{width:130px;height:50px;}
+.top{width:90px;height:40px;}
+
+.candle{
+  position:absolute;
+  top:-50px;
+  font-size:14px;
+}
+
+.flame{
+  width:12px;height:18px;
+  background:orange;
+  border-radius:50%;
+  margin:auto;
+  animation:flicker 0.2s infinite alternate;
+}
+@keyframes flicker{
+  from{transform:scale(1);}
+  to{transform:scale(1.3);}
+}
+
+/* HEARTS */
+.heart{
+  position:absolute;
+  color:#ff4d6d;
+  animation:float 2s ease forwards;
+}
+@keyframes float{
+  0%{transform:translateY(0);opacity:1;}
+  100%{transform:translateY(-200px);opacity:0;}
+}
+
+/* BUTTON */
+button{
+  margin-top:20px;
+  padding:10px 20px;
+  border:none;border-radius:20px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body class="bg-choco">
+
+<audio id="bgm" src="music2.mp3" loop></audio>
+
+<!-- BOX -->
+<div id="box1" class="panel active">
+  <div class="gift-box" id="giftBox">
+    <div class="lid"></div>
+    <div class="base"></div>
+  </div>
+  <p>Tap for chocolate 🍫</p>
+</div>
+
+<!-- FLOWER -->
+<div id="box2" class="panel">
+  <div class="garden" id="garden"></div>
+</div>
+
+<!-- CAKE -->
+<div id="box3" class="panel">
+  <div class="cake" id="cake">
+    <div class="tier top"></div>
+    <div class="tier mid"></div>
+    <div class="tier bottom"></div>
+
+    <div class="candle">
+      21
+      <div class="flame" id="flame"></div>
+    </div>
+  </div>
+</div>
+
+<h1 id="final" style="display:none;">Happy Birthday ❤️</h1>
+
+<button id="nextBtn" disabled>Next</button>
+
+<script>
+let step=1;
+let started=false;
+let bgm=document.getElementById("bgm");
+
+function startMusic(){
+  if(started)return;
+  started=true;
+  bgm.volume=0.3;
+  bgm.play().catch(()=>{});
+}
+
+/* CHOCOLATE */
+function chocolateRain(){
+  for(let i=0;i<60;i++){
+    const c=document.createElement("div");
+    c.textContent="🍫";
+    c.style.position="absolute";
+    c.style.left=Math.random()*100+"vw";
+    c.style.top="-50px";
+    c.style.fontSize="24px";
+    c.style.animation=`fall ${2+Math.random()*2}s linear`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),4000);
+  }
+}
+
+/* STARS */
+function createStars(){
+  for(let i=0;i<50;i++){
+    const s=document.createElement("div");
+    s.className="star";
+    s.style.left=Math.random()*100+"vw";
+    s.style.top=Math.random()*100+"vh";
+    document.body.appendChild(s);
+  }
+}
+
+/* FLOWERS */
+function createFlowers(){
+  const garden=document.getElementById("garden");
+  const types=["rose","sunflower","lily"];
+
+  types.forEach(type=>{
+    const plant=document.createElement("div");
+    plant.className="plant";
+
+    plant.innerHTML=`
+      <div class="flower ${type}"></div>
+      <div class="bud"></div>
+      <div class="stem"></div>
+    `;
+
+    garden.appendChild(plant);
+  });
+
+  setTimeout(()=>garden.classList.add("grow"),100);
+}
+
+/* HEARTS */
+function hearts(){
+  for(let i=0;i<10;i++){
+    const h=document.createElement("div");
+    h.textContent="❤";
+    h.className="heart";
+    h.style.left="50%";
+    h.style.bottom="0";
+    document.body.appendChild(h);
+    setTimeout(()=>h.remove(),2000);
+  }
+}
+
+/* EVENTS */
+giftBox.onclick=()=>{
+  startMusic();
+  giftBox.classList.add("open");
+  chocolateRain();
+  nextBtn.disabled=false;
+};
+
+nextBtn.onclick=()=>{
+  if(step===1){
+    document.body.className="bg-flower";
+    box1.classList.remove("active");
+    box2.classList.add("active");
+
+    createStars();
+    createFlowers();
+
+    step=2;
+  }
+  else if(step===2){
+    document.body.className="bg-cake";
+    box2.classList.remove("active");
+    box3.classList.add("active");
+    step=3;
+  }
+
+  else if(step === 3){
+    //final step -> google form
+    window.location.href = "https://docs.google.com/forms/d/e/1FAIpQLSddu_NBAO53Qi15kU7CTvy-zpoyTPSG00rxTo6tHl1Br-fYzw/viewform?usp=publish-editor"
+  }
+};
+
+cake.onclick=()=>{
+  flame.style.opacity=0;
+  setTimeout(()=>flame.style.display="none",500);
+
+  hearts();
+
+  final.style.display="block";
+};
+
+document.body.addEventListener("click",startMusic,{once:true});
+</script>
+
+</body>
+</html>

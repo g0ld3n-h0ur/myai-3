@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Birthday Page</title>
+  <!-- Pixel font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #111114;
+      --panel: rgba(16, 16, 20, 0.78);
+      --panel-border: #d8d8dd;
+      --text: #f5f5f8;
+      --muted: #b8b8c2;
+      --accent: #ececf2;
+      --danger: #ff9ea2;
+      --shadow: rgba(0, 0, 0, 0.35);
+      --pixel-shadow: 0.18rem 0.18rem 0 #000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden; /* prevent horizontal scrolling */
+      font-family: 'Press Start 2P', system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      cursor: crosshair;
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      position: relative;
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+      padding: 4vh 4vw;
+    }
+
+    /* Background layer */
+    .bg {
+       position: fixed;
+       inset: 0;
+       z-index: 0;
+
+         background-image:
+         linear-gradient(rgba(12, 12, 16, 0.52), rgba(12, 12, 16, 0.72)),
+          url('bg.jpg'); /* ← your image name */
+
+           background-size: cover;
+           background-position: center;
+           background-repeat: no-repeat;
+
+           filter: blur(10px);
+           transform: scale(1.05);
+
+           transition: filter 0.8s ease, transform 0.8s ease;
+}
+    body.unblurred .bg {
+      filter: blur(0px);
+      transform: scale(1);
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.07;
+      background-image:
+        linear-gradient(transparent 50%, rgba(255, 255, 255, 0.3) 50%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(0, 0, 0, 0.18));
+      background-size: 100% 0.35rem, 0.35rem 100%;
+    }
+
+    .screen {
+       position: relative;
+        z-index: 2;
+        
+        width: min(92vw, 44rem);
+        background: var(--panel);
+        border: 0.2rem solid var(--panel-border);
+        box-shadow: var(--pixel-shadow), 0 0.8rem 2rem var(--shadow);
+        padding: 1rem;
+        border-radius: 0;
+        opacity: 1;
+        transition: opacity 0.7s ease, transform 0.7s ease;
+      }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(1rem);
+      position: absolute;
+    }
+
+    h1,
+    h2 {
+      font-size: clamp(0.8rem, 3vw, 1rem);
+      text-align: center;
+      margin-bottom: 1rem;
+      text-wrap: balance;
+      line-height: 1.6;
+    }
+
+    .label {
+      display: block;
+      font-size: 0.56rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .pixel-input {
+      width: 100%;
+      font: inherit;
+      font-size: 0.62rem;
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.28);
+      border: 0.16rem solid var(--panel-border);
+      padding: 0.72rem 0.62rem;
+      margin-bottom: 0.9rem;
+      outline: none;
+      box-shadow: inset 0.1rem 0.1rem 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .pixel-input:focus {
+      border-color: #fff;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .pixel-btn {
+      appearance: none;
+      border: 0.16rem solid #fff;
+      background: #202028;
+      color: #fff;
+      font: inherit;
+      font-size: 0.64rem;
+      padding: 0.82rem 1rem;
+      width: 100%;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.12s ease, filter 0.12s ease;
+      box-shadow: 0.18rem 0.18rem 0 #000;
+      min-height: 3rem;
+    }
+
+    .pixel-btn:active {
+      transform: translate(0.08rem, 0.08rem);
+      box-shadow: 0.1rem 0.1rem 0 #000;
+    }
+
+    .hint,
+    .error {
+      text-align: center;
+      margin-top: 0.9rem;
+      font-size: 0.52rem;
+      line-height: 1.8;
+    }
+
+    .hint {
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--danger);
+      min-height: 2.4em;
+    }
+
+    /* Birthday book */
+    #birthdayScreen {
+      display: grid;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .book {
+      width: 100%;
+      overflow: hidden;
+      border: 0.14rem solid rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.22);
+      min-height: 42vh;
+    }
+
+    .pages {
+      display: flex;
+      width: 100%;
+      transform: translateX(0%);
+      transition: transform 0.6s cubic-bezier(0.77, 0, 0.18, 1);
+      will-change: transform;
+    }
+
+    .page.active{
+        opacity: 1;
+    }
+
+    .page {
+      flex: 0 0 100%;
+      padding: 1rem;
+      font-size: clamp(0.54rem, 2.4vw, 0.65rem);
+      line-height: 1.9;
+      color: #f3f3f7;
+      white-space: pre-line;
+      opacity: 0.85;
+      transition: opacity 0.4s ease;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.7rem;
+      margin-top: 0.4rem;
+    }
+
+    .utility-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 0.3rem;
+    }
+
+    .utility-row .pixel-btn {
+      width: auto;
+      min-width: 9.5rem;
+      font-size: 0.56rem;
+      padding-inline: 1rem;
+    }
+
+    .page-indicator {
+      text-align: center;
+      font-size: 0.5rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+      min-height: 1.1em;
+    }
+
+    @media (min-width: 768px) {
+      .screen {
+        padding: 1.3rem;
+      }
+      .controls {
+        max-width: 26rem;
+        margin-inline: auto;
+      }
+      .page {
+        padding: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Login screen -->
+  <section id="loginScreen" class="screen">
+    <h1>PORANDHA NAAL VAZTHUKAL, THOZHAREYY</h1>
+
+    <label class="label" for="nameInput">Name</label>
+    <input id="nameInput" class="pixel-input" type="text" placeholder="enter your name, my love" autocomplete="off" />
+
+    <label class="label" for="passwordInput">Password</label>
+    <input id="passwordInput" class="pixel-input" type="text" placeholder="you should know this" autocomplete="off" />
+
+    <button id="enterBtn" class="pixel-btn" type="button">→ ENTER</button>
+
+    <p class="hint">don't guess. you should know what today is</p>
+    <p id="errorText" class="error" aria-live="polite"></p>
+  </section>
+
+  <!-- Birthday screen -->
+  <section id="birthdayScreen" class="screen hidden" aria-hidden="true">
+    <h2>Happy Birthday, thangakutyyyyyyyyy</h2>
+
+    <div class="book" aria-live="polite">
+      <div id="pages" class="pages"></div>
+    </div>
+
+    <p id="pageIndicator" class="page-indicator"></p>
+
+    <div class="controls">
+      <button id="prevBtn" class="pixel-btn" type="button">← Previous</button>
+      <button id="nextBtn" class="pixel-btn" type="button">→ Next</button>
+    </div>
+
+    <div class="utility-row">
+      <button id="audioToggle" class="pixel-btn" type="button">Pause Music</button>
+    </div>
+  </section>
+
+  <!-- Replace src with your audio file -->
+  <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
+
+  <script>
+    /* -----------------------------
+      Easy-to-edit login credentials
+    ------------------------------ */
+    const CORRECT_NAME = 'naveen';
+    const CORRECT_PASSWORD = '010505<3';
+
+    const loginScreen = document.getElementById('loginScreen');
+    const birthdayScreen = document.getElementById('birthdayScreen');
+    const nameInput = document.getElementById('nameInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const enterBtn = document.getElementById('enterBtn');
+    const errorText = document.getElementById('errorText');
+
+    const pagesEl = document.getElementById('pages');
+    const pageIndicator = document.getElementById('pageIndicator');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    const bgMusic = document.getElementById('bgMusic');
+    const audioToggle = document.getElementById('audioToggle');
+
+    const retryMessages = [
+      'nope. try again.',
+      'wrong… think properly',
+      'you forgot already?',
+      'i expected better',
+      'again',
+      'wrong… you can do better than that.'
+    ];
+
+    let failedAttempts = 0;
+
+    // Keep volume soft/intimate by default.
+    bgMusic.volume = 0.22;
+
+    // Message split into book pages.
+    const messagePages = [
+      `Happy Birthday, sakkarakatti.\n\nI do not even know where to begin because there is much I want to say and words still feel small when it comes to you, my darling.\n\nYou are the one I want to talk to.\n\nThis is your birthday after we became us and your second birthday with me my love but it feels different this time.\n\nIt feels real more certain more mine.`,
+
+      `I wish I was there with you chellooo, now seeing your face annoying you my love making you smile for no reason and just being part of your day in the simplest ways.\n\nDistance is the thing I hate today because if it were not for that I would make sure you, my love felt all of this without needing to read it.\n\nEven from here I need you, my love to know something clearly.\n\nYou matter to me in a way that I do not think I will ever be able to fully explain, meri jaan.`,
+
+      `From this birthday onwards I do not just want to wish you but\n\nI want to give you my love, memories.\n\nI want every birthday of yours to feel different, better warmer than the last naveen.\n\nAnd not birthdays. Every single day I want you to feel special, seen chosen, I'll pour my love out of my heart to see you happy.\n\nToday,\ntoday is yours.`,
+
+      `Today I do not want you, my love to think about anything anything heavy anything unnecessary, my babbyyyy.\n\nI want you to feel like a child free happy, a little careless just enjoying everything around you.\n\nLaugh more smile more do whatever makes you my love feel light.\n\nYou, my love deserve that kind of happiness my love, the pure kind.\n\nIf I could be there, I would have made sure of one thing.`,
+
+      `That you feel like the happiest person in the world today.\n\nNot just happy,\nbut that kind happy where you do not even realize how much you are smiling, my sweetheart.\n\nYou have brought something into my life that I did not even know I was missing.\n\nYour presence, your way of being the way you understand me, the way you stay\nit all means more than I say loud.`,
+
+      `You are not someone I lovee.\n\nYou are someone I choose. Again and again without doubt.\n\nI hope, in every way possible you, my love feel that today.\n\nNo matter how far we are now you are still mine,\nand I am still right here with you, in all the ways that actually matters.\n\nSo today just be happy my babbyyyyy.`,
+
+      `Be soft be playful be yourself.\n\nBecause that version of you\nthat's my favorite.\n\nHappy Birthday, my love.\n\nI am so so glad you were born, my love 🤍`
+    ];
+
+    let currentPage = 0;
+
+    function renderPages() {
+      pagesEl.innerHTML = '';
+
+      messagePages.forEach((text) => {
+        const page = document.createElement('article');
+        page.className = 'page';
+        page.textContent = text;
+        pagesEl.appendChild(page);
+      });
+
+      updatePagePosition();
+    }
+
+    function updatePagePosition() {
+      pagesEl.style.transform = `translateX(-${currentPage * 100}%)`;
+      pageIndicator.textContent = `page ${currentPage + 1} / ${messagePages.length}`;
+      funprevBtn.disabled = currentPage === 0;
+      nextBtn.disabled = currentPage === messagePages.length - 1;
+      prevBtn.style.opacity = currentPage === 0 ? '0.5' : '1';
+      nextBtn.style.opacity = currentPage === messagePages.length - 1 ? '0.5' : '1';
+    }
+
+    function handleLogin() {
+      const typedName = nameInput.value.trim().toLowerCase();
+      const typedPassword = passwordInput.value.trim();
+
+      if (typedName === CORRECT_NAME.toLowerCase() && typedPassword === CORRECT_PASSWORD) {
+        errorText.textContent = '';
+        document.body.classList.add('unblurred');
+
+        loginScreen.classList.add('hidden');
+
+        setTimeout(() => {
+          birthdayScreen.classList.remove('hidden');
+          birthdayScreen.setAttribute('aria-hidden', 'false');
+        }, 360);
+
+        // Attempt auto-play only after user interaction (button click/enter key)
+        bgMusic.play().catch(() => {
+          audioToggle.textContent = 'Play Music';
+        });
+        return;
+      }
+
+      // Wrong credentials behavior.
+      if (failedAttempts === 0) {
+        errorText.textContent = 'wrong think again, big brain';
+      } else {
+        const cyclicIndex = (failedAttempts - 1) % retryMessages.length;
+        errorText.textContent = retryMessages[cyclicIndex];
+      }
+
+      failedAttempts += 1;
+    }
+
+    function toggleMusic() {
+      if (bgMusic.paused) {
+        bgMusic.play().then(() => {
+          audioToggle.textContent = 'Pause Music';
+        }).catch(() => {
+          audioToggle.textContent = 'Play Music';
+        });
+      } else {
+        bgMusic.pause();
+        audioToggle.textContent = 'Play Music';
+      }
+    }
+
+    enterBtn.addEventListener('click', handleLogin);
+    passwordInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        handleLogin();
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 0) {
+        currentPage -= 1;
+        updatePagePosition();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < messagePages.length - 1) {
+        currentPage += 1;
+        updatePagePosition();
+      } else {
+        // LAST PAGE -> GO TO GAME
+        window.location.href = "game.html";
+      }
+    });
+
+    audioToggle.addEventListener('click', toggleMusic);
+
+    renderPages();
+  </script>
+</body>
+</html>
